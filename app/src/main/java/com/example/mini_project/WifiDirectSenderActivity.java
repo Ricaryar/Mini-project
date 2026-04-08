@@ -8,14 +8,16 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.net.wifi.p2p.WifiP2pInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -63,6 +65,8 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
     private Handler handler = new Handler(Looper.getMainLooper());
     private ServerSocket serverSocket;
     private boolean isSending = false;
+    private int discoverRetryCount = 0;
+    private static final int MAX_DISCOVER_RETRY = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +76,14 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
         // 检查权限
         if (!checkWiFiPermissions()) {
             requestWiFiPermissions();
+            return;
+        }
+
+        // 检查WiFi是否开启
+        if (!isWifiEnabled()) {
+            Toast.makeText(this, "请先开启WiFi", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+            handler.postDelayed(this::finish, 2000);
             return;
         }
 
@@ -89,6 +101,13 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
 
         // 初始化 WiFi Direct
         manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+        if (manager == null) {
+            txtStatus.setText("设备不支持 WiFi Direct");
+            Toast.makeText(this, "设备不支持 WiFi Direct", Toast.LENGTH_LONG).show();
+            handler.postDelayed(this::finish, 2000);
+            return;
+        }
+
         channel = manager.initialize(this, getMainLooper(), null);
 
         intentFilter = new IntentFilter();
@@ -110,8 +129,13 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
             finish();
         });
 
-        // 开始发现设备
-        discoverDevices();
+        // 初始化并开始发现设备（兼容性处理）
+        initWiFiDirect();
+    }
+
+    private boolean isWifiEnabled() {
+        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        return wifiManager != null && wifiManager.isWifiEnabled();
     }
 
     private boolean checkWiFiPermissions() {
@@ -165,7 +189,7 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
                 photoData = PhotoHelper.bitmapToBytes(bitmap, 800);
                 runOnUiThread(() -> {
                     imgPreview.setImageBitmap(bitmap);
-                    txtStatus.setText("✅ 照片已加载\n正在搜索附近设备...");
+                    txtStatus.setText("✅ 照片已加载\n正在初始化...");
                 });
             } else {
                 runOnUiThread(() -> txtStatus.setText("❌ 加载照片失败"));
@@ -173,23 +197,98 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void discoverDevices() {
+    /**
+     * 兼容性初始化 WiFi Direct
+     * 解决三星等不同厂商手机的兼容性问题
+     */
+    private void initWiFiDirect() {
+        if (manager == null || channel == null) {
+            txtStatus.setText("WiFi Direct 初始化失败");
+            return;
+        }
+
+        txtStatus.setText("正在初始化 WiFi Direct...");
+
+        try {
+            // 停止正在进行的发现
+            manager.stopPeerDiscovery(channel, null);
+        } catch (Exception e) {
+            // ignore
+        }
+
+        try {
+            // 移除现有组（重要：解决三星等设备的 BUSY 状态）
+            manager.removeGroup(channel, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    Log.d("WiFiDirect", "清理成功");
+                    startDiscoveryWithDelay();
+                }
+
+                @Override
+                public void onFailure(int reason) {
+                    Log.d("WiFiDirect", "清理失败: " + reason);
+                    startDiscoveryWithDelay();
+                }
+            });
+        } catch (SecurityException e) {
+            startDiscoveryWithDelay();
+        }
+    }
+
+    private void startDiscoveryWithDelay() {
+        // 给设备足够时间完成清理（三星设备需要更长时间）
+        handler.postDelayed(() -> {
+            discoverDevicesWithRetry();
+        }, 2000);
+    }
+
+    private void discoverDevicesWithRetry() {
         if (manager == null || channel == null) return;
 
         try {
             manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
-                    txtStatus.setText("正在搜索设备...");
+                    runOnUiThread(() -> {
+                        txtStatus.setText("正在搜索设备...");
+                        discoverRetryCount = 0;
+                    });
                 }
 
                 @Override
                 public void onFailure(int reason) {
-                    txtStatus.setText("设备发现失败: " + reason);
+                    runOnUiThread(() -> {
+                        String reasonMsg = getFailureReason(reason);
+                        if (discoverRetryCount < MAX_DISCOVER_RETRY) {
+                            discoverRetryCount++;
+                            txtStatus.setText("初始化中 (" + reasonMsg + ")，重试 " + discoverRetryCount + "/" + MAX_DISCOVER_RETRY + "...");
+                            handler.postDelayed(() -> {
+                                discoverDevicesWithRetry();
+                            }, 1500);
+                        } else {
+                            txtStatus.setText("WiFi Direct 初始化失败 (" + reasonMsg + ")\n请尝试：\n1. 关闭再打开WiFi\n2. 确保未连接其他设备\n3. 重启应用后重试");
+                            Toast.makeText(WifiDirectSenderActivity.this,
+                                    "请关闭再打开WiFi后重试", Toast.LENGTH_LONG).show();
+                        }
+                    });
                 }
             });
         } catch (SecurityException e) {
-            txtStatus.setText("权限不足，请检查权限设置");
+            runOnUiThread(() -> txtStatus.setText("权限不足，请检查权限设置"));
+        }
+    }
+
+    private String getFailureReason(int reason) {
+        switch (reason) {
+            case WifiP2pManager.BUSY:
+                return "设备忙";
+            case WifiP2pManager.ERROR:
+                return "内部错误";
+            case WifiP2pManager.P2P_UNSUPPORTED:
+                return "不支持P2P";
+            default:
+                return "错误码:" + reason;
         }
     }
 
@@ -204,14 +303,14 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
             manager.connect(channel, config, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
-                    txtStatus.setText("连接成功，准备传输...");
+                    runOnUiThread(() -> txtStatus.setText("连接成功，准备传输..."));
                 }
 
                 @Override
                 public void onFailure(int reason) {
                     runOnUiThread(() -> {
-                        txtStatus.setText("连接失败: " + reason);
-                        discoverDevices();
+                        txtStatus.setText("连接失败: " + getFailureReason(reason));
+                        handler.postDelayed(() -> discoverDevicesWithRetry(), 2000);
                     });
                 }
             });
@@ -300,6 +399,9 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
         }
         if (manager != null && channel != null) {
             try {
+                manager.stopPeerDiscovery(channel, null);
+            } catch (Exception e) {}
+            try {
                 manager.removeGroup(channel, null);
             } catch (SecurityException e) {
                 // ignore
@@ -312,7 +414,11 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
         super.onResume();
         if (checkWiFiPermissions() && manager != null) {
             receiver = new WiFiDirectBroadcastReceiver();
-            registerReceiver(receiver, intentFilter);
+            try {
+                registerReceiver(receiver, intentFilter);
+            } catch (IllegalArgumentException e) {
+                // ignore
+            }
         }
     }
 
@@ -402,7 +508,8 @@ public class WifiDirectSenderActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             WifiP2pDevice device = devices.get(position);
-            holder.txtDeviceName.setText(device.deviceName);
+            holder.txtDeviceName.setText(device.deviceName != null && !device.deviceName.isEmpty()
+                    ? device.deviceName : "未知设备");
             holder.btnConnect.setOnClickListener(v -> listener.onConnect(device));
         }
 
