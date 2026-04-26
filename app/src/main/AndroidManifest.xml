@@ -88,6 +88,11 @@
             android:exported="false"
             android:launchMode="singleTop" />
 
+        <activity
+            android:name=".ChatbotComposeActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
     </application>
 
 </manifest>

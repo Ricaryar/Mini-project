@@ -28,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_WIFI_PERMISSIONS = 103;
 
     private Button btnTakePhoto;
+    private Button btnChatbot;
     private Button btnReceiveNFC;
     private Button btnReceiveWiFi;
     private RecyclerView recyclerPhotos;
@@ -46,6 +47,9 @@ public class MainActivity extends AppCompatActivity {
 
         btnTakePhoto.setOnClickListener(v -> takePhoto());
 
+        btnChatbot.setOnClickListener(v ->
+                startActivity(new Intent(this, ChatbotComposeActivity.class)));
+
         // NFC 接收按钮
         btnReceiveNFC.setOnClickListener(v -> {
             Intent intent = new Intent(this, NFCReceiverActivity.class);
@@ -63,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initViews() {
         btnTakePhoto = findViewById(R.id.btn_take_photo);
+        btnChatbot = findViewById(R.id.btn_chatbot);
         btnReceiveNFC = findViewById(R.id.btn_receive_nfc);
         btnReceiveWiFi = findViewById(R.id.btn_receive_wifi);
         recyclerPhotos = findViewById(R.id.recycler_photos);
@@ -156,17 +161,41 @@ public class MainActivity extends AppCompatActivity {
             permissions.add(Manifest.permission.CAMERA);
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.READ_MEDIA_IMAGES);
+            }
+        }
+
         // WiFi Direct 需要的权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES)
                     != PackageManager.PERMISSION_GRANTED) {
                 permissions.add(Manifest.permission.NEARBY_WIFI_DEVICES);
             }
+            // 部分机型仍需要位置权限才能稳定发现 WiFi Direct 设备
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            }
         } else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED) {
                 permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
                 permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+            }
+        }
+
+        // Android 12+ 蓝牙运行时权限（NFC 流程实际使用蓝牙传输）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.BLUETOOTH_CONNECT);
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.BLUETOOTH_SCAN);
             }
         }
 

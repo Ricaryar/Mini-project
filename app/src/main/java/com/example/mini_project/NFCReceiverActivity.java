@@ -1,17 +1,21 @@
 package com.example.mini_project;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -48,7 +52,25 @@ public class NFCReceiverActivity extends AppCompatActivity implements NfcAdapter
 
     private void connectToSender() {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter == null) {
+            runOnUiThread(() -> txtStatus.setText("❌ 设备不支持蓝牙"));
+            return;
+        }
+        if (!adapter.isEnabled()) {
+            runOnUiThread(() -> txtStatus.setText("❌ 请先开启蓝牙"));
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) {
+            runOnUiThread(() -> txtStatus.setText("❌ 缺少蓝牙权限"));
+            return;
+        }
         Set<BluetoothDevice> pairedDevices = adapter.getBondedDevices();
+        if (pairedDevices == null || pairedDevices.isEmpty()) {
+            runOnUiThread(() -> txtStatus.setText("❌ 未找到已配对蓝牙设备"));
+            return;
+        }
         for (BluetoothDevice device : pairedDevices) {
             new Thread(() -> {
                 try {

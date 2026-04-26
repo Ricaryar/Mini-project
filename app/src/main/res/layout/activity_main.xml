@@ -32,6 +32,16 @@
         android:backgroundTint="#2196F3"
         android:layout_marginBottom="12dp"/>
 
+    <Button
+        android:id="@+id/btn_chatbot"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="💬 本地智能助理（Compose）"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:backgroundTint="#673AB7"
+        android:layout_marginBottom="12dp"/>
+
     <!-- 接收方式标题 -->
     <TextView
         android:layout_width="match_parent"
