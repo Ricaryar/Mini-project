@@ -1,0 +1,52 @@
+{"text":"帮助", "intent":"help"}
+{"text":"幫助", "intent":"help"}
+{"text":"help", "intent":"help"}
+{"text":"怎么用", "intent":"help"}
+{"text":"点用", "intent":"help"}
+{"text":"有哪些功能", "intent":"help"}
+{"text":"你好", "intent":"greet"}
+{"text":"您好", "intent":"greet"}
+{"text":"hello", "intent":"greet"}
+{"text":"hi", "intent":"greet"}
+{"text":"hey", "intent":"greet"}
+{"text":"谢谢", "intent":"thanks"}
+{"text":"謝謝", "intent":"thanks"}
+{"text":"thank you", "intent":"thanks"}
+{"text":"thanks", "intent":"thanks"}
+{"text":"你是谁", "intent":"intro"}
+{"text":"自我介绍", "intent":"intro"}
+{"text":"介绍你自己", "intent":"intro"}
+{"text":"现在几点", "intent":"time"}
+{"text":"时间", "intent":"time"}
+{"text":"what time", "intent":"time"}
+{"text":"我好紧张", "intent":"mood"}
+{"text":"我压力很大", "intent":"mood"}
+{"text":"怕答辩", "intent":"mood"}
+{"text":"无聊", "intent":"mood"}
+{"text":"项目介绍", "intent":"project"}
+{"text":"帮我总结项目", "intent":"project"}
+{"text":"report summary", "intent":"project"}
+{"text":"拍照怎么用", "intent":"camera"}
+{"text":"camera", "intent":"camera"}
+{"text":"take photo", "intent":"camera"}
+{"text":"照片保存在哪里", "intent":"gallery"}
+{"text":"相册", "intent":"gallery"}
+{"text":"gallery", "intent":"gallery"}
+{"text":"需要什么权限", "intent":"permission"}
+{"text":"permission", "intent":"permission"}
+{"text":"权限不足", "intent":"permission"}
+{"text":"nfc怎么用", "intent":"nfc"}
+{"text":"NFC分享", "intent":"nfc"}
+{"text":"近场传输", "intent":"nfc"}
+{"text":"蓝牙怎么配对", "intent":"bluetooth"}
+{"text":"bluetooth", "intent":"bluetooth"}
+{"text":"藍牙", "intent":"bluetooth"}
+{"text":"wifi怎么传图", "intent":"wifi"}
+{"text":"Wi-Fi Direct", "intent":"wifi"}
+{"text":"p2p连接", "intent":"wifi"}
+{"text":"wifi连不上", "intent":"troubleshoot"}
+{"text":"搜不到设备", "intent":"troubleshoot"}
+{"text":"busy错误", "intent":"troubleshoot"}
+{"text":"compose有什么用", "intent":"compose"}
+{"text":"jetpack compose", "intent":"compose"}
+{"text":"界面用compose吗", "intent":"compose"}
